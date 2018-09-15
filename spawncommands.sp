@@ -6,6 +6,7 @@
 #define PARAM_RESET "reset"
 
 int g_iSpawnHealth[MAXPLAYERS+1];
+bool g_bSpawnHealth[MAXPLAYERS+1];
 StringMap g_mapSpawnHealth;
 
 public Plugin myinfo =
@@ -21,6 +22,7 @@ public void OnPluginStart() {
     LoadTranslations("common.phrases");
     RegAdminCmd("sm_spawnhp", Command_SpawnHP, ADMFLAG_SLAY, "Set health on spawn.");
     RegAdminCmd("sm_spawnhealth", Command_SpawnHP, ADMFLAG_SLAY, "Set health on spawn.");
+
     HookEvent("player_spawn", vPlayerSpawn);
 
     g_mapSpawnHealth = new StringMap();
@@ -34,7 +36,7 @@ public void OnMapStart() {
 void Reset() {
     // Reset commands
     for (int i = 0; i <= MAXPLAYERS; i++) {
-    	g_iSpawnHealth[i] = 0;
+        g_bSpawnHealth[i] = false;
     }
     g_mapSpawnHealth.Clear();
 }
@@ -73,34 +75,48 @@ bool IsStickyTarget(const char[] target) {
 }
 
 public Action Command_SpawnHP(int client, int args) {
-    char target[32], sHP[32];
-    GetCmdArg(1, target, sizeof(target));
-    GetCmdArg(2, sHP, sizeof(sHP));
-    char target_name[MAX_NAME_LENGTH];
-    int target_list[MAXPLAYERS], target_count;
-    bool tn_is_ml;
-    bool reset = false;
-
     // Check args
     if (args != 2) {
-        ReplyToCommand(client, "[SM] Usage: sm_spawnhp <#userid|name> <HP value>|reset");
+        ReplyToCommand(client, "[SM] Usage: sm_spawnhp <#userid|name> <HP value|reset>");
         return Plugin_Handled;
     }
 
+    char target[32], sValue[32];
+    GetCmdArg(1, target, sizeof(target));
+    GetCmdArg(2, sValue, sizeof(sValue));
+
+    bool reset = false;
     // Check value
-    int iHP = StringToInt(sHP);
-    if(iHP < 1 || StrEqual(PARAM_RESET, sHP)) {
+    int iHP = StringToInt(sValue);
+    if(iHP < 1 || StrEqual(PARAM_RESET, sValue)) {
         reset = true;
     }
+
+    return Command_Generic("spawnhp", client, target, iHP, reset, g_iSpawnHealth, g_bSpawnHealth, g_mapSpawnHealth);
+}
+
+public Action Command_Generic(
+        const char[] command,
+        int client,
+        const char[] target,
+        int value,
+        bool reset,
+        int[] playerValues,
+        bool[] playerEnabled,
+        StringMap targetValues
+) {
+    char target_name[MAX_NAME_LENGTH];
+    int target_list[MAXPLAYERS], target_count;
+    bool tn_is_ml;
 
     if(IsStickyTarget(target)) {
         // Set for a sticky target
         if(reset) {
-            g_mapSpawnHealth.Remove(target);
-            LogAction(client, -1, "Admin %L reset spawnhp of %s", client, target);
+            targetValues.Remove(target);
+            LogAction(client, -1, "Admin %L reset %s of %s", client, command, target);
         } else {
-            g_mapSpawnHealth.SetValue(target, iHP, true);
-            LogAction(client, -1, "Admin %L set spawnhp of %s to %d", client, target, iHP);
+            targetValues.SetValue(target, value, true);
+            LogAction(client, -1, "Admin %L set %s of %s to %d", client, command, target, value);
         }
         // Just for translation
         ProcessTargetString(target, client, target_list, MAXPLAYERS, COMMAND_FILTER_ALIVE, target_name, sizeof(target_name), tn_is_ml);
@@ -114,11 +130,12 @@ public Action Command_SpawnHP(int client, int args) {
             for(int i=0; i<target_count; i++) {
                 int target_id = target_list[i];
                 if(reset) {
-                    g_iSpawnHealth[target_id] = 0;
-                    LogAction(client, -1, "Admin %L reset spawnhp of %L", client, target_id);
+                    playerEnabled[target_id] = false;
+                    LogAction(client, -1, "Admin %L reset %s of %L", client, command, target_id);
                 } else {
-                    g_iSpawnHealth[target_id] = iHP;
-                    LogAction(client, target_id, "Admin %L set spawnhp of %L to %d", client, target_id, iHP);
+                    playerEnabled[target_id] = true;
+                    playerValues[target_id] = value;
+                    LogAction(client, target_id, "Admin %L set %s of %L to %d", client, command, target_id, value);
                 }
             }
         }
@@ -127,15 +144,15 @@ public Action Command_SpawnHP(int client, int args) {
     // Print action
     if (tn_is_ml) {
         if(reset) {
-            ShowActivity2(client, "[SM] ", "Reset spawnhp on %t", target_name);
+            ShowActivity2(client, "[SM] ", "Reset %s on %t", command, target_name);
         } else {
-            ShowActivity2(client, "[SM] ", "Set spawnhp of %d on %t", iHP, target_name);
+            ShowActivity2(client, "[SM] ", "Set %s of %d on %t", command, value, target_name);
         }
     } else {
         if(reset) {
-            ShowActivity2(client, "[SM] ", "Reset spawnhp on %s", target_name);
+            ShowActivity2(client, "[SM] ", "Reset %s on %s", command, target_name);
         } else {
-            ShowActivity2(client, "[SM] ", "Set spawnhp of %d on %s", iHP, target_name);
+            ShowActivity2(client, "[SM] ", "Set %s of %d on %s", command, value, target_name);
         }
     }
 
@@ -143,25 +160,44 @@ public Action Command_SpawnHP(int client, int args) {
 }
 
 public void vPlayerSpawn(Event event, const char[] name, bool dontBroadcast) {
-    int iPlayer = GetClientOfUserId(event.GetInt("userid"));
+    int player_id = GetClientOfUserId(event.GetInt("userid"));
+    int value;
 
+    // Spawn health
+    if(GetSpawnValueForPlayer(player_id, g_iSpawnHealth, g_bSpawnHealth, g_mapSpawnHealth, value)) {
+        SetEntityHealth(player_id, value);
+    }
+}
+
+/**
+ * Get the spawn value to set for the player
+ * Returns false if no value needs to be set
+ */
+bool GetSpawnValueForPlayer(
+        int player_id,
+        int[] playerValues,
+        bool[] playerEnabled,
+        StringMap targetValues,
+        int& output_value
+) {
     // Check for specific target
-    int iHP = g_iSpawnHealth[iPlayer];
-    if (iHP > 0) {
-        SetEntityHealth(iPlayer, iHP);
-        return;
+    if (playerEnabled[player_id]) {
+        output_value = playerValues[player_id];
+        return true;
     }
 
     // Check for sticky target
-    StringMapSnapshot mapSnapshot = g_mapSpawnHealth.Snapshot();
+    StringMapSnapshot mapSnapshot = targetValues.Snapshot();
     for(int i=0; i<mapSnapshot.Length; i++) {
         char target[32];
         int value;
         mapSnapshot.GetKey(i, target, sizeof(target));
-        g_mapSpawnHealth.GetValue(target, value);
-        if(value > 0 && IsPlayerTargetted(iPlayer, target)) {
-            SetEntityHealth(iPlayer, value);
-            return;
+        targetValues.GetValue(target, value);
+        if(IsPlayerTargetted(player_id, target)) {
+            output_value = value;
+            return true;
         }
     }
+
+    return false;
 }
