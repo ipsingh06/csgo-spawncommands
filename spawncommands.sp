@@ -12,32 +12,89 @@
 #define CS_SLOT_GRENADE     3   /**< Grenade slot (will only return one grenade). */
 #define CS_SLOT_C4          4   /**< C4 slot. */
 
-int g_iSpawnHealth[MAXPLAYERS+1],
-    g_iSpawnSpeed[MAXPLAYERS+1],
-    g_iSpawnArmor[MAXPLAYERS+1],
-    g_iSpawnCash[MAXPLAYERS+1],
-    g_iSpawnHelmet[MAXPLAYERS+1],
-    g_iSpawnWeaponAmmoClip[MAXPLAYERS+1],
-    g_iSpawnWeaponAmmoReserve[MAXPLAYERS+1],
-    g_iSpawnKnife[MAXPLAYERS+1];
+methodmap SpawnProperty < StringMap {
+    public SpawnProperty() {
+        StringMap me = new StringMap();
+        ArrayList player_values = new ArrayList(1, MAXPLAYERS+1);
+        ArrayList player_enabled = new ArrayList(1, MAXPLAYERS+1);
+        StringMap target_values = new StringMap();
+        me.SetValue("pvalues", player_values, false);
+        me.SetValue("penabled", player_enabled, false);
+        me.SetValue("tvalues", target_values, false);
+        return view_as<SpawnProperty>(me);
+    }
 
-bool g_bSpawnHealth[MAXPLAYERS+1],
-     g_bSpawnSpeed[MAXPLAYERS+1],
-     g_bSpawnArmor[MAXPLAYERS+1],
-     g_bSpawnCash[MAXPLAYERS+1],
-     g_bSpawnHelmet[MAXPLAYERS+1],
-     g_bSpawnWeaponAmmoClip[MAXPLAYERS+1],
-     g_bSpawnWeaponAmmoReserve[MAXPLAYERS+1],
-     g_bSpawnKnife[MAXPLAYERS+1];
+    public int GetPlayerValue(int player_id) {
+        ArrayList player_values;
+        this.GetValue("pvalues", player_values);
+        return player_values.Get(player_id);
+    }
 
-StringMap g_mapSpawnHealth,
-          g_mapSpawnSpeed,
-          g_mapSpawnArmor,
-          g_mapSpawnCash,
-          g_mapSpawnHelmet,
-          g_mapSpawnWeaponAmmoClip,
-          g_mapSpawnWeaponAmmoReserve,
-          g_mapSpawnKnife;
+    public void SetPlayerValue(int player_id, int value) {
+        ArrayList player_values;
+        this.GetValue("pvalues", player_values);
+        player_values.Set(player_id, value);
+    }
+
+    public bool GetPlayerEnabled(int player_id) {
+        ArrayList player_enabled;
+        this.GetValue("penabled", player_enabled);
+        return player_enabled.Get(player_id);
+    }
+
+    public void SetPlayerEnabled(int player_id, bool enabled) {
+        ArrayList player_enabled;
+        this.GetValue("penabled", player_enabled);
+        player_enabled.Set(player_id, enabled);
+    }
+
+    public int GetTargetValue(const char[] target) {
+        StringMap target_values;
+        this.GetValue("tvalues", target_values);
+        int value;
+        target_values.GetValue(target, value);
+        return value;
+    }
+
+    public void SetTargetValue(const char[] target, int value) {
+        StringMap target_values;
+        this.GetValue("tvalues", target_values);
+        target_values.SetValue(target, value, true);
+    }
+
+    public void RemoveTarget(const char[] target) {
+        StringMap target_values;
+        this.GetValue("tvalues", target_values);
+        target_values.Remove(target);
+    }
+
+    public StringMapSnapshot GetTargets() {
+        StringMap target_values;
+        this.GetValue("tvalues", target_values);
+        return target_values.Snapshot();
+    }
+
+    public void Reset() {
+        ArrayList player_enabled;
+        this.GetValue("penabled", player_enabled);
+        for (int i = 0; i <= MAXPLAYERS; i++) {
+            player_enabled.Set(i, false);
+        }
+
+        StringMap target_values;
+        this.GetValue("tvalues", target_values);
+        target_values.Clear();
+    }
+}
+
+SpawnProperty g_spawnHealth;
+SpawnProperty g_spawnSpeed;
+SpawnProperty g_spawnArmor;
+SpawnProperty g_spawnCash;
+SpawnProperty g_spawnHelmet;
+SpawnProperty g_spawnWeaponAmmoClip;
+SpawnProperty g_spawnWeaponAmmoReserve;
+SpawnProperty g_spawnKnife;
 
 public Plugin myinfo =
 {
@@ -62,14 +119,15 @@ public void OnPluginStart() {
 
     HookEvent("player_spawn", vPlayerSpawn);
 
-    g_mapSpawnHealth = new StringMap();
-    g_mapSpawnSpeed = new StringMap();
-    g_mapSpawnArmor = new StringMap();
-    g_mapSpawnCash = new StringMap();
-    g_mapSpawnHelmet = new StringMap();
-    g_mapSpawnWeaponAmmoClip = new StringMap();
-    g_mapSpawnWeaponAmmoReserve = new StringMap();
-    g_mapSpawnKnife = new StringMap();
+    g_spawnHealth = new SpawnProperty();
+    g_spawnSpeed = new SpawnProperty();
+    g_spawnArmor = new SpawnProperty();
+    g_spawnCash = new SpawnProperty();
+    g_spawnHelmet = new SpawnProperty();
+    g_spawnWeaponAmmoClip = new SpawnProperty();
+    g_spawnWeaponAmmoReserve = new SpawnProperty();
+    g_spawnKnife = new SpawnProperty();
+
     Reset();
 }
 
@@ -78,25 +136,14 @@ public void OnMapStart() {
 }
 
 void Reset() {
-    // Reset commands
-    for (int i = 0; i <= MAXPLAYERS; i++) {
-        g_bSpawnHealth[i] = false;
-        g_bSpawnSpeed[i] = false;
-        g_bSpawnArmor[i] = false;
-        g_bSpawnCash[i] = false;
-        g_bSpawnHelmet[i] = false;
-        g_bSpawnWeaponAmmoClip[i] = false;
-        g_bSpawnWeaponAmmoReserve[i] = false;
-        g_bSpawnKnife[i] = false;
-    }
-    g_mapSpawnHealth.Clear();
-    g_mapSpawnSpeed.Clear();
-    g_mapSpawnArmor.Clear();
-    g_mapSpawnCash.Clear();
-    g_mapSpawnHelmet.Clear();
-    g_mapSpawnWeaponAmmoClip.Clear();
-    g_mapSpawnWeaponAmmoReserve.Clear();
-    g_mapSpawnKnife.Clear();
+    g_spawnHealth.Reset();
+    g_spawnSpeed.Reset();
+    g_spawnArmor.Reset();
+    g_spawnCash.Reset();
+    g_spawnHelmet.Reset();
+    g_spawnWeaponAmmoClip.Reset();
+    g_spawnWeaponAmmoReserve.Reset();
+    g_spawnKnife.Reset();
 }
 
 bool IsPlayerTargetted(int player_id, const char[] target) {
@@ -150,7 +197,7 @@ public Action Command_SpawnHP(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawn hp", client, target, iHP, reset, g_iSpawnHealth, g_bSpawnHealth, g_mapSpawnHealth);
+    return Command_Generic("spawn hp", client, target, iHP, reset, g_spawnHealth);
 }
 
 public Action Command_SpawnSpeed(int client, int args) {
@@ -171,7 +218,7 @@ public Action Command_SpawnSpeed(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawn speed", client, target, iSpeed, reset, g_iSpawnSpeed, g_bSpawnSpeed, g_mapSpawnSpeed);
+    return Command_Generic("spawn speed", client, target, iSpeed, reset, g_spawnSpeed);
 }
 
 public Action Command_SpawnArmor(int client, int args) {
@@ -192,7 +239,7 @@ public Action Command_SpawnArmor(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawn armor", client, target, iArmor, reset, g_iSpawnArmor, g_bSpawnArmor, g_mapSpawnArmor);
+    return Command_Generic("spawn armor", client, target, iArmor, reset, g_spawnArmor);
 }
 
 public Action Command_SpawnCash(int client, int args) {
@@ -213,7 +260,7 @@ public Action Command_SpawnCash(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawn cash", client, target, iCash, reset, g_iSpawnCash, g_bSpawnCash, g_mapSpawnCash);
+    return Command_Generic("spawn cash", client, target, iCash, reset, g_spawnCash);
 }
 
 public Action Command_SpawnHelmet(int client, int args) {
@@ -234,7 +281,7 @@ public Action Command_SpawnHelmet(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawn helmet", client, target, iHelmet, reset, g_iSpawnHelmet, g_bSpawnHelmet, g_mapSpawnHelmet);
+    return Command_Generic("spawn helmet", client, target, iHelmet, reset, g_spawnHelmet);
 }
 
 public Action Command_SpawnWeaponAmmoClip(int client, int args) {
@@ -255,8 +302,7 @@ public Action Command_SpawnWeaponAmmoClip(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawn weapon ammo clip", client, target, iAmmo, reset,
-        g_iSpawnWeaponAmmoClip, g_bSpawnWeaponAmmoClip, g_mapSpawnWeaponAmmoClip);
+    return Command_Generic("spawn weapon ammo clip", client, target, iAmmo, reset, g_spawnWeaponAmmoClip);
 }
 
 public Action Command_SpawnWeaponAmmoReserve(int client, int args) {
@@ -277,8 +323,7 @@ public Action Command_SpawnWeaponAmmoReserve(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawn weapon ammo reserve", client, target, iAmmo, reset,
-        g_iSpawnWeaponAmmoReserve, g_bSpawnWeaponAmmoReserve, g_mapSpawnWeaponAmmoReserve);
+    return Command_Generic("spawn weapon ammo reserve", client, target, iAmmo, reset, g_spawnWeaponAmmoReserve);
 }
 
 public Action Command_SpawnKnife(int client, int args) {
@@ -299,7 +344,7 @@ public Action Command_SpawnKnife(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawn knife", client, target, iKnife, reset, g_iSpawnKnife, g_bSpawnKnife, g_mapSpawnKnife);
+    return Command_Generic("spawn knife", client, target, iKnife, reset, g_spawnKnife);
 }
 
 public Action Command_Generic(
@@ -308,9 +353,7 @@ public Action Command_Generic(
         const char[] target,
         int value,
         bool reset,
-        int[] playerValues,
-        bool[] playerEnabled,
-        StringMap targetValues
+        SpawnProperty spawn_property
 ) {
     char target_name[MAX_NAME_LENGTH];
     int target_list[MAXPLAYERS], target_count;
@@ -319,10 +362,10 @@ public Action Command_Generic(
     if(IsStickyTarget(target)) {
         // Set for a sticky target
         if(reset) {
-            targetValues.Remove(target);
+            spawn_property.RemoveTarget(target);
             LogAction(client, -1, "Admin %L reset %s of %s", client, command, target);
         } else {
-            targetValues.SetValue(target, value, true);
+            spawn_property.SetTargetValue(target, value);
             LogAction(client, -1, "Admin %L set %s of %s to %d", client, command, target, value);
         }
         // Just for translation
@@ -337,11 +380,11 @@ public Action Command_Generic(
             for(int i=0; i<target_count; i++) {
                 int target_id = target_list[i];
                 if(reset) {
-                    playerEnabled[target_id] = false;
+                    spawn_property.SetPlayerEnabled(target_id, false);
                     LogAction(client, -1, "Admin %L reset %s of %L", client, command, target_id);
                 } else {
-                    playerEnabled[target_id] = true;
-                    playerValues[target_id] = value;
+                    spawn_property.SetPlayerEnabled(target_id, true);
+                    spawn_property.SetPlayerValue(target_id, value);
                     LogAction(client, target_id, "Admin %L set %s of %L to %d", client, command, target_id, value);
                 }
             }
@@ -377,38 +420,38 @@ public Action OnPlayerSpawn(Handle timer, int player_id) {
     int value;
 
     // Spawn health
-    if(GetSpawnValueForPlayer(player_id, g_iSpawnHealth, g_bSpawnHealth, g_mapSpawnHealth, value)) {
+    if(GetSpawnValueForPlayer(player_id, g_spawnHealth, value)) {
         SetEntityHealth(player_id, value);
         LogAction(0, player_id, "%L health set to %d", player_id, value);
     }
 
     // Spawn speed
-    if(GetSpawnValueForPlayer(player_id, g_iSpawnHealth, g_bSpawnSpeed, g_mapSpawnSpeed, value)) {
+    if(GetSpawnValueForPlayer(player_id, g_spawnSpeed, value)) {
         float fSpeed = value/100.0;
         SetEntPropFloat(player_id, Prop_Data, "m_flLaggedMovementValue", fSpeed);
         LogAction(0, player_id, "%L speed set to %f", player_id, fSpeed);
     }
 
     // Spawn armor
-    if(GetSpawnValueForPlayer(player_id, g_iSpawnArmor, g_bSpawnArmor, g_mapSpawnArmor, value)) {
+    if(GetSpawnValueForPlayer(player_id, g_spawnArmor, value)) {
         SetEntProp(player_id, Prop_Data, "m_ArmorValue", value);
         LogAction(0, player_id, "%L armor set to %d", player_id, value);
     }
 
     // Spawn cash
-    if(GetSpawnValueForPlayer(player_id, g_iSpawnCash, g_bSpawnCash, g_mapSpawnCash, value)) {
+    if(GetSpawnValueForPlayer(player_id, g_spawnCash, value)) {
         SetEntProp(player_id, Prop_Send, "m_iAccount", value);
         LogAction(0, player_id, "%L cash set to %d", player_id, value);
     }
 
     // Spawn helmet
-    if(GetSpawnValueForPlayer(player_id, g_iSpawnHelmet, g_bSpawnHelmet, g_mapSpawnHelmet, value)) {
+    if(GetSpawnValueForPlayer(player_id, g_spawnHelmet, value)) {
         SetEntProp(player_id, Prop_Send, "m_bHasHelmet", value);
         LogAction(0, player_id, "%L helmet set to %d", player_id, value);
     }
 
     // Spawn weapon clip ammo
-    if(GetSpawnValueForPlayer(player_id, g_iSpawnWeaponAmmoClip, g_bSpawnWeaponAmmoClip, g_mapSpawnWeaponAmmoClip, value)) {
+    if(GetSpawnValueForPlayer(player_id, g_spawnWeaponAmmoClip, value)) {
         int weapon = GetPlayerWeaponSlot(player_id, CS_SLOT_SECONDARY);
         if (IsValidEntity(weapon)) {
             SetEntProp(weapon, Prop_Send, "m_iClip1", value);
@@ -418,7 +461,7 @@ public Action OnPlayerSpawn(Handle timer, int player_id) {
     }
 
     // Spawn weapon reserve ammo
-    if(GetSpawnValueForPlayer(player_id, g_iSpawnWeaponAmmoReserve, g_bSpawnWeaponAmmoReserve, g_mapSpawnWeaponAmmoReserve, value)) {
+    if(GetSpawnValueForPlayer(player_id, g_spawnWeaponAmmoReserve, value)) {
         int weapon = GetPlayerWeaponSlot(player_id, CS_SLOT_SECONDARY);
         if (IsValidEntity(weapon)) {
             SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", value);
@@ -431,7 +474,7 @@ public Action OnPlayerSpawn(Handle timer, int player_id) {
     }
 
     // Spawn Knife
-    if(GetSpawnValueForPlayer(player_id, g_iSpawnKnife, g_bSpawnKnife, g_mapSpawnKnife, value)) {
+    if(GetSpawnValueForPlayer(player_id, g_spawnKnife, value)) {
         if(value == 0) {
             int weapon = GetPlayerWeaponSlot(player_id, CS_SLOT_KNIFE);
             if(IsValidEntity(weapon)) {
@@ -445,30 +488,28 @@ public Action OnPlayerSpawn(Handle timer, int player_id) {
     return Plugin_Stop;
 }
 
+
 /**
  * Get the spawn value to set for the player
  * Returns false if no value needs to be set
  */
 bool GetSpawnValueForPlayer(
         int player_id,
-        int[] playerValues,
-        bool[] playerEnabled,
-        StringMap targetValues,
+        SpawnProperty spawn_property,
         int& output_value
 ) {
     // Check for specific target
-    if (playerEnabled[player_id]) {
-        output_value = playerValues[player_id];
+    if (spawn_property.GetPlayerEnabled(player_id)) {
+        output_value = spawn_property.GetPlayerValue(player_id);
         return true;
     }
 
     // Check for sticky target
-    StringMapSnapshot mapSnapshot = targetValues.Snapshot();
+    StringMapSnapshot mapSnapshot = spawn_property.GetTargets();
     for(int i=0; i<mapSnapshot.Length; i++) {
         char target[32];
-        int value;
         mapSnapshot.GetKey(i, target, sizeof(target));
-        targetValues.GetValue(target, value);
+        int value = spawn_property.GetTargetValue(target);
         if(IsPlayerTargetted(player_id, target)) {
             output_value = value;
             return true;
