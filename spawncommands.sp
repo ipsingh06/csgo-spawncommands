@@ -34,12 +34,12 @@ public Plugin myinfo =
 
 public void OnPluginStart() {
     LoadTranslations("common.phrases");
-    RegAdminCmd("sm_spawnhp", Command_SpawnHP, ADMFLAG_SLAY, "Set health on spawn.");
-    RegAdminCmd("sm_spawnhealth", Command_SpawnHP, ADMFLAG_SLAY, "Set health on spawn.");
-    RegAdminCmd("sm_spawnspeed", Command_SpawnSpeed, ADMFLAG_SLAY, "Set speed on spawn.");
-    RegAdminCmd("sm_spawnarmor", Command_SpawnArmor, ADMFLAG_SLAY, "Set speed on spawn.");
-    RegAdminCmd("sm_spawncash", Command_SpawnCash, ADMFLAG_SLAY, "Set cash on spawn.");
-    RegAdminCmd("sm_spawnhelmet", Command_SpawnHelmet, ADMFLAG_SLAY, "Set helmet on spawn.");
+    RegAdminCmd("sm_spawn_hp", Command_SpawnHP, ADMFLAG_SLAY, "Set health on spawn.");
+    RegAdminCmd("sm_spawn_health", Command_SpawnHP, ADMFLAG_SLAY, "Set health on spawn.");
+    RegAdminCmd("sm_spawn_speed", Command_SpawnSpeed, ADMFLAG_SLAY, "Set speed on spawn.");
+    RegAdminCmd("sm_spawn_armor", Command_SpawnArmor, ADMFLAG_SLAY, "Set speed on spawn.");
+    RegAdminCmd("sm_spawn_cash", Command_SpawnCash, ADMFLAG_SLAY, "Set cash on spawn.");
+    RegAdminCmd("sm_spawn_helmet", Command_SpawnHelmet, ADMFLAG_SLAY, "Set helmet on spawn.");
 
     HookEvent("player_spawn", vPlayerSpawn);
 
@@ -107,7 +107,7 @@ bool IsStickyTarget(const char[] target) {
 public Action Command_SpawnHP(int client, int args) {
     // Check args
     if (args != 2) {
-        ReplyToCommand(client, "[SM] Usage: sm_spawnhp <#userid|name> <HP value|reset>");
+        ReplyToCommand(client, "[SM] Usage: sm_spawn_hp <#userid|name> <HP value|reset>");
         return Plugin_Handled;
     }
 
@@ -122,13 +122,13 @@ public Action Command_SpawnHP(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawnhp", client, target, iHP, reset, g_iSpawnHealth, g_bSpawnHealth, g_mapSpawnHealth);
+    return Command_Generic("spawn hp", client, target, iHP, reset, g_iSpawnHealth, g_bSpawnHealth, g_mapSpawnHealth);
 }
 
 public Action Command_SpawnSpeed(int client, int args) {
     // Check args
     if (args != 2) {
-        ReplyToCommand(client, "[SM] Usage: sm_spawnspeed <#userid|name> <speed value|reset>");
+        ReplyToCommand(client, "[SM] Usage: sm_spawn_speed <#userid|name> <speed value|reset>");
         return Plugin_Handled;
     }
 
@@ -143,13 +143,13 @@ public Action Command_SpawnSpeed(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawnspeed", client, target, iSpeed, reset, g_iSpawnSpeed, g_bSpawnSpeed, g_mapSpawnSpeed);
+    return Command_Generic("spawn speed", client, target, iSpeed, reset, g_iSpawnSpeed, g_bSpawnSpeed, g_mapSpawnSpeed);
 }
 
 public Action Command_SpawnArmor(int client, int args) {
     // Check args
     if (args != 2) {
-        ReplyToCommand(client, "[SM] Usage: sm_spawnarmor <#userid|name> <armor value|reset>");
+        ReplyToCommand(client, "[SM] Usage: sm_spawn_armor <#userid|name> <armor value|reset>");
         return Plugin_Handled;
     }
 
@@ -164,13 +164,13 @@ public Action Command_SpawnArmor(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawnarmor", client, target, iArmor, reset, g_iSpawnArmor, g_bSpawnArmor, g_mapSpawnArmor);
+    return Command_Generic("spawn armor", client, target, iArmor, reset, g_iSpawnArmor, g_bSpawnArmor, g_mapSpawnArmor);
 }
 
 public Action Command_SpawnCash(int client, int args) {
     // Check args
     if (args != 2) {
-        ReplyToCommand(client, "[SM] Usage: sm_spawncash <#userid|name> <cash value|reset>");
+        ReplyToCommand(client, "[SM] Usage: sm_spawn_cash <#userid|name> <cash value|reset>");
         return Plugin_Handled;
     }
 
@@ -185,13 +185,13 @@ public Action Command_SpawnCash(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawncash", client, target, iCash, reset, g_iSpawnCash, g_bSpawnCash, g_mapSpawnCash);
+    return Command_Generic("spawn cash", client, target, iCash, reset, g_iSpawnCash, g_bSpawnCash, g_mapSpawnCash);
 }
 
 public Action Command_SpawnHelmet(int client, int args) {
     // Check args
     if (args != 2) {
-        ReplyToCommand(client, "[SM] Usage: sm_spawnhelmet <#userid|name> <0|1|reset>");
+        ReplyToCommand(client, "[SM] Usage: sm_spawn_helmet <#userid|name> <0|1|reset>");
         return Plugin_Handled;
     }
 
@@ -206,7 +206,7 @@ public Action Command_SpawnHelmet(int client, int args) {
         reset = true;
     }
 
-    return Command_Generic("spawnhelmet", client, target, iHelmet, reset, g_iSpawnHelmet, g_bSpawnHelmet, g_mapSpawnHelmet);
+    return Command_Generic("spawn helmet", client, target, iHelmet, reset, g_iSpawnHelmet, g_bSpawnHelmet, g_mapSpawnHelmet);
 }
 
 public Action Command_Generic(
