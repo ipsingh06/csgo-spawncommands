@@ -18,7 +18,8 @@ int g_iSpawnHealth[MAXPLAYERS+1],
     g_iSpawnCash[MAXPLAYERS+1],
     g_iSpawnHelmet[MAXPLAYERS+1],
     g_iSpawnWeaponAmmoClip[MAXPLAYERS+1],
-    g_iSpawnWeaponAmmoReserve[MAXPLAYERS+1];
+    g_iSpawnWeaponAmmoReserve[MAXPLAYERS+1],
+    g_iSpawnKnife[MAXPLAYERS+1];
 
 bool g_bSpawnHealth[MAXPLAYERS+1],
      g_bSpawnSpeed[MAXPLAYERS+1],
@@ -26,7 +27,8 @@ bool g_bSpawnHealth[MAXPLAYERS+1],
      g_bSpawnCash[MAXPLAYERS+1],
      g_bSpawnHelmet[MAXPLAYERS+1],
      g_bSpawnWeaponAmmoClip[MAXPLAYERS+1],
-     g_bSpawnWeaponAmmoReserve[MAXPLAYERS+1];
+     g_bSpawnWeaponAmmoReserve[MAXPLAYERS+1],
+     g_bSpawnKnife[MAXPLAYERS+1];
 
 StringMap g_mapSpawnHealth,
           g_mapSpawnSpeed,
@@ -34,7 +36,8 @@ StringMap g_mapSpawnHealth,
           g_mapSpawnCash,
           g_mapSpawnHelmet,
           g_mapSpawnWeaponAmmoClip,
-          g_mapSpawnWeaponAmmoReserve;
+          g_mapSpawnWeaponAmmoReserve,
+          g_mapSpawnKnife;
 
 public Plugin myinfo =
 {
@@ -55,6 +58,7 @@ public void OnPluginStart() {
     RegAdminCmd("sm_spawn_helmet", Command_SpawnHelmet, ADMFLAG_SLAY, "Set helmet on spawn.");
     RegAdminCmd("sm_spawn_weapon_ammo_clip", Command_SpawnWeaponAmmoClip, ADMFLAG_SLAY, "Set weapon clip ammo on spawn.");
     RegAdminCmd("sm_spawn_weapon_ammo_reserve", Command_SpawnWeaponAmmoReserve, ADMFLAG_SLAY, "Set weapon reserve ammo on spawn.");
+    RegAdminCmd("sm_spawn_knife", Command_SpawnKnife, ADMFLAG_SLAY, "Set/strip knife on spawn.");
 
     HookEvent("player_spawn", vPlayerSpawn);
 
@@ -65,6 +69,7 @@ public void OnPluginStart() {
     g_mapSpawnHelmet = new StringMap();
     g_mapSpawnWeaponAmmoClip = new StringMap();
     g_mapSpawnWeaponAmmoReserve = new StringMap();
+    g_mapSpawnKnife = new StringMap();
     Reset();
 }
 
@@ -82,6 +87,7 @@ void Reset() {
         g_bSpawnHelmet[i] = false;
         g_bSpawnWeaponAmmoClip[i] = false;
         g_bSpawnWeaponAmmoReserve[i] = false;
+        g_bSpawnKnife[i] = false;
     }
     g_mapSpawnHealth.Clear();
     g_mapSpawnSpeed.Clear();
@@ -90,6 +96,7 @@ void Reset() {
     g_mapSpawnHelmet.Clear();
     g_mapSpawnWeaponAmmoClip.Clear();
     g_mapSpawnWeaponAmmoReserve.Clear();
+    g_mapSpawnKnife.Clear();
 }
 
 bool IsPlayerTargetted(int player_id, const char[] target) {
@@ -274,6 +281,27 @@ public Action Command_SpawnWeaponAmmoReserve(int client, int args) {
         g_iSpawnWeaponAmmoReserve, g_bSpawnWeaponAmmoReserve, g_mapSpawnWeaponAmmoReserve);
 }
 
+public Action Command_SpawnKnife(int client, int args) {
+    // Check args
+    if (args != 2) {
+        ReplyToCommand(client, "[SM] Usage: sm_spawn_knife <#userid|name> <0|1|reset>");
+        return Plugin_Handled;
+    }
+
+    char target[32], sValue[32];
+    GetCmdArg(1, target, sizeof(target));
+    GetCmdArg(2, sValue, sizeof(sValue));
+
+    bool reset = false;
+    // Check value
+    int iKnife = StringToInt(sValue);
+    if(iKnife < 0 || iKnife > 1 || StrEqual(PARAM_RESET, sValue)) {
+        reset = true;
+    }
+
+    return Command_Generic("spawn knife", client, target, iKnife, reset, g_iSpawnKnife, g_bSpawnKnife, g_mapSpawnKnife);
+}
+
 public Action Command_Generic(
         const char[] command,
         int client,
@@ -358,25 +386,25 @@ public Action OnPlayerSpawn(Handle timer, int player_id) {
     if(GetSpawnValueForPlayer(player_id, g_iSpawnHealth, g_bSpawnSpeed, g_mapSpawnSpeed, value)) {
         float fSpeed = value/100.0;
         SetEntPropFloat(player_id, Prop_Data, "m_flLaggedMovementValue", fSpeed);
-        LogAction(0, player_id, "%L Spawnspeed set to %f", player_id, fSpeed);
+        LogAction(0, player_id, "%L speed set to %f", player_id, fSpeed);
     }
 
     // Spawn armor
     if(GetSpawnValueForPlayer(player_id, g_iSpawnArmor, g_bSpawnArmor, g_mapSpawnArmor, value)) {
         SetEntProp(player_id, Prop_Data, "m_ArmorValue", value);
-        LogAction(0, player_id, "%L Spawnarmor set to %d", player_id, value);
+        LogAction(0, player_id, "%L armor set to %d", player_id, value);
     }
 
     // Spawn cash
     if(GetSpawnValueForPlayer(player_id, g_iSpawnCash, g_bSpawnCash, g_mapSpawnCash, value)) {
         SetEntProp(player_id, Prop_Send, "m_iAccount", value);
-        LogAction(0, player_id, "%L Spawncash set to %d", player_id, value);
+        LogAction(0, player_id, "%L cash set to %d", player_id, value);
     }
 
     // Spawn helmet
     if(GetSpawnValueForPlayer(player_id, g_iSpawnHelmet, g_bSpawnHelmet, g_mapSpawnHelmet, value)) {
         SetEntProp(player_id, Prop_Send, "m_bHasHelmet", value);
-        LogAction(0, player_id, "%L Spawnhelmet set to %d", player_id, value);
+        LogAction(0, player_id, "%L helmet set to %d", player_id, value);
     }
 
     // Spawn weapon clip ammo
@@ -399,6 +427,18 @@ public Action OnPlayerSpawn(Handle timer, int player_id) {
                 SetEntProp(player_id, Prop_Send, "m_iAmmo", value, _, ammotype);
             }
             LogAction(0, player_id, "%L weapon reserve ammo set to %d", player_id, value);
+        }
+    }
+
+    // Spawn Knife
+    if(GetSpawnValueForPlayer(player_id, g_iSpawnKnife, g_bSpawnKnife, g_mapSpawnKnife, value)) {
+        if(value == 0) {
+            int weapon = GetPlayerWeaponSlot(player_id, CS_SLOT_KNIFE);
+            if(IsValidEntity(weapon)) {
+                RemovePlayerItem(player_id, weapon);
+                AcceptEntityInput(weapon, "kill");
+                LogAction(0, player_id, "%L knife removed", player_id);
+            }
         }
     }
 
