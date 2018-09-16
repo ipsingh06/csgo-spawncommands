@@ -6,17 +6,22 @@
 #define PARAM_RESET "reset"
 
 int g_iSpawnHealth[MAXPLAYERS+1],
-    g_iSpawnSpeed[MAXPLAYERS+1];
+    g_iSpawnSpeed[MAXPLAYERS+1],
+    g_iSpawnArmor[MAXPLAYERS+1];
+
 bool g_bSpawnHealth[MAXPLAYERS+1],
-     g_bSpawnSpeed[MAXPLAYERS+1];
+     g_bSpawnSpeed[MAXPLAYERS+1],
+     g_bSpawnArmor[MAXPLAYERS+1];
+
 StringMap g_mapSpawnHealth,
-          g_mapSpawnSpeed;
+          g_mapSpawnSpeed,
+          g_mapSpawnArmor;
 
 public Plugin myinfo =
 {
     name = "Spawn Commands",
     author = "Xlurmy",
-    description = "Set player properties on spawn. Based off Set Health by joac1144 / Zyanthius [DK]",
+    description = "Set player properties on spawn.",
     version = "0.1",
     url = ""
 };
@@ -26,11 +31,13 @@ public void OnPluginStart() {
     RegAdminCmd("sm_spawnhp", Command_SpawnHP, ADMFLAG_SLAY, "Set health on spawn.");
     RegAdminCmd("sm_spawnhealth", Command_SpawnHP, ADMFLAG_SLAY, "Set health on spawn.");
     RegAdminCmd("sm_spawnspeed", Command_SpawnSpeed, ADMFLAG_SLAY, "Set speed on spawn.");
+    RegAdminCmd("sm_spawnarmor", Command_SpawnArmor, ADMFLAG_SLAY, "Set speed on spawn.");
 
     HookEvent("player_spawn", vPlayerSpawn);
 
     g_mapSpawnHealth = new StringMap();
     g_mapSpawnSpeed = new StringMap();
+    g_mapSpawnArmor = new StringMap();
     Reset();
 }
 
@@ -43,9 +50,11 @@ void Reset() {
     for (int i = 0; i <= MAXPLAYERS; i++) {
         g_bSpawnHealth[i] = false;
         g_bSpawnSpeed[i] = false;
+        g_bSpawnArmor[i] = false;
     }
     g_mapSpawnHealth.Clear();
     g_mapSpawnSpeed.Clear();
+    g_mapSpawnArmor.Clear();
 }
 
 bool IsPlayerTargetted(int player_id, const char[] target) {
@@ -121,6 +130,27 @@ public Action Command_SpawnSpeed(int client, int args) {
     }
 
     return Command_Generic("spawnspeed", client, target, iSpeed, reset, g_iSpawnSpeed, g_bSpawnSpeed, g_mapSpawnSpeed);
+}
+
+public Action Command_SpawnArmor(int client, int args) {
+    // Check args
+    if (args != 2) {
+        ReplyToCommand(client, "[SM] Usage: sm_spawnarmor <#userid|name> <armor value|reset>");
+        return Plugin_Handled;
+    }
+
+    char target[32], sValue[32];
+    GetCmdArg(1, target, sizeof(target));
+    GetCmdArg(2, sValue, sizeof(sValue));
+
+    bool reset = false;
+    // Check value
+    int iArmor = StringToInt(sValue);
+    if(iArmor < 0 || StrEqual(PARAM_RESET, sValue)) {
+        reset = true;
+    }
+
+    return Command_Generic("spawnarmor", client, target, iArmor, reset, g_iSpawnArmor, g_bSpawnArmor, g_mapSpawnArmor);
 }
 
 public Action Command_Generic(
@@ -200,6 +230,11 @@ public void vPlayerSpawn(Event event, const char[] name, bool dontBroadcast) {
     if(GetSpawnValueForPlayer(player_id, g_iSpawnHealth, g_bSpawnSpeed, g_mapSpawnSpeed, value)) {
         float fSpeed = value/100.0;
         SetEntPropFloat(player_id, Prop_Data, "m_flLaggedMovementValue", fSpeed);
+    }
+
+    // Spawn armor
+    if(GetSpawnValueForPlayer(player_id, g_iSpawnArmor, g_bSpawnArmor, g_mapSpawnArmor, value)) {
+        SetEntProp(player_id, Prop_Data, "m_ArmorValue", value);
     }
 }
 
