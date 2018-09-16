@@ -7,15 +7,18 @@
 
 int g_iSpawnHealth[MAXPLAYERS+1],
     g_iSpawnSpeed[MAXPLAYERS+1],
-    g_iSpawnArmor[MAXPLAYERS+1];
+    g_iSpawnArmor[MAXPLAYERS+1],
+    g_iSpawnCash[MAXPLAYERS+1];
 
 bool g_bSpawnHealth[MAXPLAYERS+1],
      g_bSpawnSpeed[MAXPLAYERS+1],
-     g_bSpawnArmor[MAXPLAYERS+1];
+     g_bSpawnArmor[MAXPLAYERS+1],
+     g_bSpawnCash[MAXPLAYERS+1];
 
 StringMap g_mapSpawnHealth,
           g_mapSpawnSpeed,
-          g_mapSpawnArmor;
+          g_mapSpawnArmor,
+          g_mapSpawnCash;
 
 public Plugin myinfo =
 {
@@ -32,12 +35,14 @@ public void OnPluginStart() {
     RegAdminCmd("sm_spawnhealth", Command_SpawnHP, ADMFLAG_SLAY, "Set health on spawn.");
     RegAdminCmd("sm_spawnspeed", Command_SpawnSpeed, ADMFLAG_SLAY, "Set speed on spawn.");
     RegAdminCmd("sm_spawnarmor", Command_SpawnArmor, ADMFLAG_SLAY, "Set speed on spawn.");
+    RegAdminCmd("sm_spawncash", Command_SpawnCash, ADMFLAG_SLAY, "Set cash on spawn.");
 
     HookEvent("player_spawn", vPlayerSpawn);
 
     g_mapSpawnHealth = new StringMap();
     g_mapSpawnSpeed = new StringMap();
     g_mapSpawnArmor = new StringMap();
+    g_mapSpawnCash = new StringMap();
     Reset();
 }
 
@@ -51,10 +56,12 @@ void Reset() {
         g_bSpawnHealth[i] = false;
         g_bSpawnSpeed[i] = false;
         g_bSpawnArmor[i] = false;
+        g_bSpawnCash[i] = false;
     }
     g_mapSpawnHealth.Clear();
     g_mapSpawnSpeed.Clear();
     g_mapSpawnArmor.Clear();
+    g_mapSpawnCash.Clear();
 }
 
 bool IsPlayerTargetted(int player_id, const char[] target) {
@@ -153,6 +160,27 @@ public Action Command_SpawnArmor(int client, int args) {
     return Command_Generic("spawnarmor", client, target, iArmor, reset, g_iSpawnArmor, g_bSpawnArmor, g_mapSpawnArmor);
 }
 
+public Action Command_SpawnCash(int client, int args) {
+    // Check args
+    if (args != 2) {
+        ReplyToCommand(client, "[SM] Usage: sm_spawncash <#userid|name> <cash value|reset>");
+        return Plugin_Handled;
+    }
+
+    char target[32], sValue[32];
+    GetCmdArg(1, target, sizeof(target));
+    GetCmdArg(2, sValue, sizeof(sValue));
+
+    bool reset = false;
+    // Check value
+    int iCash = StringToInt(sValue);
+    if(iCash < 0 || StrEqual(PARAM_RESET, sValue)) {
+        reset = true;
+    }
+
+    return Command_Generic("spawncash", client, target, iCash, reset, g_iSpawnCash, g_bSpawnCash, g_mapSpawnCash);
+}
+
 public Action Command_Generic(
         const char[] command,
         int client,
@@ -219,23 +247,40 @@ public Action Command_Generic(
 
 public void vPlayerSpawn(Event event, const char[] name, bool dontBroadcast) {
     int player_id = GetClientOfUserId(event.GetInt("userid"));
+    // Need to delay a little bit before we can set some properties
+    CreateTimer(0.1, OnPlayerSpawn, player_id, TIMER_FLAG_NO_MAPCHANGE);
+}
+
+
+public Action OnPlayerSpawn(Handle timer, int player_id) {
     int value;
 
     // Spawn health
     if(GetSpawnValueForPlayer(player_id, g_iSpawnHealth, g_bSpawnHealth, g_mapSpawnHealth, value)) {
         SetEntityHealth(player_id, value);
+        LogAction(0, player_id, "%L health set to %d", player_id, value);
     }
 
     // Spawn speed
     if(GetSpawnValueForPlayer(player_id, g_iSpawnHealth, g_bSpawnSpeed, g_mapSpawnSpeed, value)) {
         float fSpeed = value/100.0;
         SetEntPropFloat(player_id, Prop_Data, "m_flLaggedMovementValue", fSpeed);
+        LogAction(0, player_id, "%L Spawnspeed set to %f", player_id, fSpeed);
     }
 
     // Spawn armor
     if(GetSpawnValueForPlayer(player_id, g_iSpawnArmor, g_bSpawnArmor, g_mapSpawnArmor, value)) {
         SetEntProp(player_id, Prop_Data, "m_ArmorValue", value);
+        LogAction(0, player_id, "%L Spawnarmor set to %d", player_id, value);
     }
+
+    // Spawn cash
+    if(GetSpawnValueForPlayer(player_id, g_iSpawnCash, g_bSpawnCash, g_mapSpawnCash, value)) {
+        SetEntProp(player_id, Prop_Send, "m_iAccount", value);
+        LogAction(0, player_id, "%L Spawncash set to %d", player_id, value);
+    }
+
+    return Plugin_Stop;
 }
 
 /**
