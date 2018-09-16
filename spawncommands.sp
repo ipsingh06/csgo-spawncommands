@@ -8,17 +8,20 @@
 int g_iSpawnHealth[MAXPLAYERS+1],
     g_iSpawnSpeed[MAXPLAYERS+1],
     g_iSpawnArmor[MAXPLAYERS+1],
-    g_iSpawnCash[MAXPLAYERS+1];
+    g_iSpawnCash[MAXPLAYERS+1],
+    g_iSpawnHelmet[MAXPLAYERS+1];
 
 bool g_bSpawnHealth[MAXPLAYERS+1],
      g_bSpawnSpeed[MAXPLAYERS+1],
      g_bSpawnArmor[MAXPLAYERS+1],
-     g_bSpawnCash[MAXPLAYERS+1];
+     g_bSpawnCash[MAXPLAYERS+1],
+     g_bSpawnHelmet[MAXPLAYERS+1];
 
 StringMap g_mapSpawnHealth,
           g_mapSpawnSpeed,
           g_mapSpawnArmor,
-          g_mapSpawnCash;
+          g_mapSpawnCash,
+          g_mapSpawnHelmet;
 
 public Plugin myinfo =
 {
@@ -36,6 +39,7 @@ public void OnPluginStart() {
     RegAdminCmd("sm_spawnspeed", Command_SpawnSpeed, ADMFLAG_SLAY, "Set speed on spawn.");
     RegAdminCmd("sm_spawnarmor", Command_SpawnArmor, ADMFLAG_SLAY, "Set speed on spawn.");
     RegAdminCmd("sm_spawncash", Command_SpawnCash, ADMFLAG_SLAY, "Set cash on spawn.");
+    RegAdminCmd("sm_spawnhelmet", Command_SpawnHelmet, ADMFLAG_SLAY, "Set helmet on spawn.");
 
     HookEvent("player_spawn", vPlayerSpawn);
 
@@ -43,6 +47,7 @@ public void OnPluginStart() {
     g_mapSpawnSpeed = new StringMap();
     g_mapSpawnArmor = new StringMap();
     g_mapSpawnCash = new StringMap();
+    g_mapSpawnHelmet = new StringMap();
     Reset();
 }
 
@@ -57,11 +62,13 @@ void Reset() {
         g_bSpawnSpeed[i] = false;
         g_bSpawnArmor[i] = false;
         g_bSpawnCash[i] = false;
+        g_bSpawnHelmet[i] = false;
     }
     g_mapSpawnHealth.Clear();
     g_mapSpawnSpeed.Clear();
     g_mapSpawnArmor.Clear();
     g_mapSpawnCash.Clear();
+    g_mapSpawnHelmet.Clear();
 }
 
 bool IsPlayerTargetted(int player_id, const char[] target) {
@@ -181,6 +188,27 @@ public Action Command_SpawnCash(int client, int args) {
     return Command_Generic("spawncash", client, target, iCash, reset, g_iSpawnCash, g_bSpawnCash, g_mapSpawnCash);
 }
 
+public Action Command_SpawnHelmet(int client, int args) {
+    // Check args
+    if (args != 2) {
+        ReplyToCommand(client, "[SM] Usage: sm_spawnhelmet <#userid|name> <0|1|reset>");
+        return Plugin_Handled;
+    }
+
+    char target[32], sValue[32];
+    GetCmdArg(1, target, sizeof(target));
+    GetCmdArg(2, sValue, sizeof(sValue));
+
+    bool reset = false;
+    // Check value
+    int iHelmet = StringToInt(sValue);
+    if(iHelmet < 0 || iHelmet > 1 || StrEqual(PARAM_RESET, sValue)) {
+        reset = true;
+    }
+
+    return Command_Generic("spawnhelmet", client, target, iHelmet, reset, g_iSpawnHelmet, g_bSpawnHelmet, g_mapSpawnHelmet);
+}
+
 public Action Command_Generic(
         const char[] command,
         int client,
@@ -278,6 +306,12 @@ public Action OnPlayerSpawn(Handle timer, int player_id) {
     if(GetSpawnValueForPlayer(player_id, g_iSpawnCash, g_bSpawnCash, g_mapSpawnCash, value)) {
         SetEntProp(player_id, Prop_Send, "m_iAccount", value);
         LogAction(0, player_id, "%L Spawncash set to %d", player_id, value);
+    }
+
+    // Spawn helmet
+    if(GetSpawnValueForPlayer(player_id, g_iSpawnHelmet, g_bSpawnHelmet, g_mapSpawnHelmet, value)) {
+        SetEntProp(player_id, Prop_Send, "m_bHasHelmet", value);
+        LogAction(0, player_id, "%L Spawnhelmet set to %d", player_id, value);
     }
 
     return Plugin_Stop;
