@@ -107,8 +107,8 @@ public Plugin myinfo =
     name = "Spawn Commands",
     author = "Xlurmy",
     description = "Set player properties on spawn.",
-    version = "0.1",
-    url = ""
+    version = "0.2",
+    url = "https://github.com/ipsingh06/csgo-spawncommands"
 };
 
 public void OnPluginStart() {
