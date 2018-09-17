@@ -99,6 +99,7 @@ SpawnProperty g_spawnPrimaryAmmoClip;
 SpawnProperty g_spawnPrimaryAmmoReserve;
 SpawnProperty g_spawnSecondaryAmmoClip;
 SpawnProperty g_spawnSecondaryAmmoReserve;
+SpawnProperty g_spawnGrenadeAmmo;
 SpawnProperty g_spawnKnife;
 
 public Plugin myinfo =
@@ -122,6 +123,7 @@ public void OnPluginStart() {
     RegAdminCmd("sm_spawn_primary_ammo_reserve", Command_SpawnPrimaryAmmoReserve, ADMFLAG_SLAY, "Set primary weapon reserve ammo on spawn.");
     RegAdminCmd("sm_spawn_secondary_ammo_clip", Command_SpawnSecondaryAmmoClip, ADMFLAG_SLAY, "Set secondary weapon's clip ammo on spawn.");
     RegAdminCmd("sm_spawn_secondary_ammo_reserve", Command_SpawnSecondaryAmmoReserve, ADMFLAG_SLAY, "Set secondary weapon reserve ammo on spawn.");
+    RegAdminCmd("sm_spawn_grenade_ammo", Command_SpawnGrenadeAmmo, ADMFLAG_SLAY, "Set grenade ammo on spawn.");
     RegAdminCmd("sm_spawn_knife", Command_SpawnKnife, ADMFLAG_SLAY, "Set/strip knife on spawn.");
 
     HookEvent("player_spawn", vPlayerSpawn);
@@ -135,6 +137,7 @@ public void OnPluginStart() {
     g_spawnPrimaryAmmoReserve = new SpawnProperty();
     g_spawnSecondaryAmmoClip = new SpawnProperty();
     g_spawnSecondaryAmmoReserve = new SpawnProperty();
+    g_spawnGrenadeAmmo = new SpawnProperty();
     g_spawnKnife = new SpawnProperty();
 
     Reset();
@@ -154,6 +157,7 @@ void Reset() {
     g_spawnPrimaryAmmoReserve.Reset();
     g_spawnSecondaryAmmoClip.Reset();
     g_spawnSecondaryAmmoReserve.Reset();
+    g_spawnGrenadeAmmo.Reset();
     g_spawnKnife.Reset();
 }
 
@@ -379,6 +383,27 @@ public Action Command_SpawnSecondaryAmmoReserve(int client, int args) {
     return Command_Generic("spawn secondary ammo reserve", client, target, iAmmo, reset, g_spawnSecondaryAmmoReserve);
 }
 
+public Action Command_SpawnGrenadeAmmo(int client, int args) {
+    // Check args
+    if (args != 2) {
+        ReplyToCommand(client, "[SM] Usage: sm_spawn_grenade_ammo <#userid|name> <ammo value|reset>");
+        return Plugin_Handled;
+    }
+
+    char target[32], sValue[32];
+    GetCmdArg(1, target, sizeof(target));
+    GetCmdArg(2, sValue, sizeof(sValue));
+
+    bool reset = false;
+    // Check value
+    int iAmmo = StringToInt(sValue);
+    if(iAmmo < 0 || StrEqual(PARAM_RESET, sValue)) {
+        reset = true;
+    }
+
+    return Command_Generic("spawn grenade ammo", client, target, iAmmo, reset, g_spawnGrenadeAmmo);
+}
+
 public Action Command_SpawnKnife(int client, int args) {
     // Check args
     if (args != 2) {
@@ -532,6 +557,14 @@ public Action OnPlayerSpawn(Handle timer, int player_id) {
         int weapon = GetPlayerWeaponSlot(player_id, CS_SLOT_SECONDARY);
         if (SetWeaponAmmo(player_id, weapon, AMMO_RESERVE, value)) {
             LogAction(0, player_id, "%L secondary reserve ammo set to %d", player_id, value);
+        }
+    }
+
+    // Spawn grenade ammo
+    if(GetSpawnValueForPlayer(player_id, g_spawnGrenadeAmmo, value)) {
+        int weapon = GetPlayerWeaponSlot(player_id, CS_SLOT_GRENADE);
+        if (SetWeaponAmmo(player_id, weapon, AMMO_RESERVE, value)) {
+            LogAction(0, player_id, "%L grenade ammo set to %d", player_id, value);
         }
     }
 
