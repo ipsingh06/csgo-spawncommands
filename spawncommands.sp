@@ -12,6 +12,9 @@
 #define CS_SLOT_GRENADE     3   /**< Grenade slot (will only return one grenade). */
 #define CS_SLOT_C4          4   /**< C4 slot. */
 
+#define AMMO_CLIP        0
+#define AMMO_RESERVE     1
+
 methodmap SpawnProperty < StringMap {
     public SpawnProperty() {
         StringMap me = new StringMap();
@@ -92,6 +95,8 @@ SpawnProperty g_spawnSpeed;
 SpawnProperty g_spawnArmor;
 SpawnProperty g_spawnCash;
 SpawnProperty g_spawnHelmet;
+SpawnProperty g_spawnPrimaryAmmoClip;
+SpawnProperty g_spawnPrimaryAmmoReserve;
 SpawnProperty g_spawnSecondaryAmmoClip;
 SpawnProperty g_spawnSecondaryAmmoReserve;
 SpawnProperty g_spawnKnife;
@@ -113,6 +118,8 @@ public void OnPluginStart() {
     RegAdminCmd("sm_spawn_armor", Command_SpawnArmor, ADMFLAG_SLAY, "Set speed on spawn.");
     RegAdminCmd("sm_spawn_cash", Command_SpawnCash, ADMFLAG_SLAY, "Set cash on spawn.");
     RegAdminCmd("sm_spawn_helmet", Command_SpawnHelmet, ADMFLAG_SLAY, "Set helmet on spawn.");
+    RegAdminCmd("sm_spawn_primary_ammo_clip", Command_SpawnPrimaryAmmoClip, ADMFLAG_SLAY, "Set primary weapon's clip ammo on spawn.");
+    RegAdminCmd("sm_spawn_primary_ammo_reserve", Command_SpawnPrimaryAmmoReserve, ADMFLAG_SLAY, "Set primary weapon reserve ammo on spawn.");
     RegAdminCmd("sm_spawn_secondary_ammo_clip", Command_SpawnSecondaryAmmoClip, ADMFLAG_SLAY, "Set secondary weapon's clip ammo on spawn.");
     RegAdminCmd("sm_spawn_secondary_ammo_reserve", Command_SpawnSecondaryAmmoReserve, ADMFLAG_SLAY, "Set secondary weapon reserve ammo on spawn.");
     RegAdminCmd("sm_spawn_knife", Command_SpawnKnife, ADMFLAG_SLAY, "Set/strip knife on spawn.");
@@ -124,6 +131,8 @@ public void OnPluginStart() {
     g_spawnArmor = new SpawnProperty();
     g_spawnCash = new SpawnProperty();
     g_spawnHelmet = new SpawnProperty();
+    g_spawnPrimaryAmmoClip = new SpawnProperty();
+    g_spawnPrimaryAmmoReserve = new SpawnProperty();
     g_spawnSecondaryAmmoClip = new SpawnProperty();
     g_spawnSecondaryAmmoReserve = new SpawnProperty();
     g_spawnKnife = new SpawnProperty();
@@ -141,6 +150,8 @@ void Reset() {
     g_spawnArmor.Reset();
     g_spawnCash.Reset();
     g_spawnHelmet.Reset();
+    g_spawnPrimaryAmmoClip.Reset();
+    g_spawnPrimaryAmmoReserve.Reset();
     g_spawnSecondaryAmmoClip.Reset();
     g_spawnSecondaryAmmoReserve.Reset();
     g_spawnKnife.Reset();
@@ -282,6 +293,48 @@ public Action Command_SpawnHelmet(int client, int args) {
     }
 
     return Command_Generic("spawn helmet", client, target, iHelmet, reset, g_spawnHelmet);
+}
+
+public Action Command_SpawnPrimaryAmmoClip(int client, int args) {
+    // Check args
+    if (args != 2) {
+        ReplyToCommand(client, "[SM] Usage: sm_spawn_primary_ammo_clip <#userid|name> <ammo value|reset>");
+        return Plugin_Handled;
+    }
+
+    char target[32], sValue[32];
+    GetCmdArg(1, target, sizeof(target));
+    GetCmdArg(2, sValue, sizeof(sValue));
+
+    bool reset = false;
+    // Check value
+    int iAmmo = StringToInt(sValue);
+    if(iAmmo < 0 || StrEqual(PARAM_RESET, sValue)) {
+        reset = true;
+    }
+
+    return Command_Generic("spawn primary ammo clip", client, target, iAmmo, reset, g_spawnPrimaryAmmoClip);
+}
+
+public Action Command_SpawnPrimaryAmmoReserve(int client, int args) {
+    // Check args
+    if (args != 2) {
+        ReplyToCommand(client, "[SM] Usage: sm_spawn_primary_ammo_reserve <#userid|name> <ammo value|reset>");
+        return Plugin_Handled;
+    }
+
+    char target[32], sValue[32];
+    GetCmdArg(1, target, sizeof(target));
+    GetCmdArg(2, sValue, sizeof(sValue));
+
+    bool reset = false;
+    // Check value
+    int iAmmo = StringToInt(sValue);
+    if(iAmmo < 0 || StrEqual(PARAM_RESET, sValue)) {
+        reset = true;
+    }
+
+    return Command_Generic("spawn primary ammo reserve", client, target, iAmmo, reset, g_spawnPrimaryAmmoReserve);
 }
 
 public Action Command_SpawnSecondaryAmmoClip(int client, int args) {
@@ -450,26 +503,35 @@ public Action OnPlayerSpawn(Handle timer, int player_id) {
         LogAction(0, player_id, "%L helmet set to %d", player_id, value);
     }
 
+    // Spawn primary clip ammo
+    if(GetSpawnValueForPlayer(player_id, g_spawnPrimaryAmmoClip, value)) {
+        int weapon = GetPlayerWeaponSlot(player_id, CS_SLOT_PRIMARY);
+        if (SetWeaponAmmo(player_id, weapon, AMMO_CLIP, value)) {
+            LogAction(0, player_id, "%L primary clip ammo set to %d", player_id, value);
+        }
+    }
+
+    // Spawn primary reserve ammo
+    if(GetSpawnValueForPlayer(player_id, g_spawnPrimaryAmmoReserve, value)) {
+        int weapon = GetPlayerWeaponSlot(player_id, CS_SLOT_PRIMARY);
+        if (SetWeaponAmmo(player_id, weapon, AMMO_RESERVE, value)) {
+            LogAction(0, player_id, "%L primary reserve ammo set to %d", player_id, value);
+        }
+    }
+
     // Spawn secondary clip ammo
     if(GetSpawnValueForPlayer(player_id, g_spawnSecondaryAmmoClip, value)) {
         int weapon = GetPlayerWeaponSlot(player_id, CS_SLOT_SECONDARY);
-        if (IsValidEntity(weapon)) {
-            SetEntProp(weapon, Prop_Send, "m_iClip1", value);
-            SetEntProp(weapon, Prop_Send, "m_iClip2", value);
-            LogAction(0, player_id, "%L weapon clip ammo set to %d", player_id, value);
+        if (SetWeaponAmmo(player_id, weapon, AMMO_CLIP, value)) {
+            LogAction(0, player_id, "%L secondary clip ammo set to %d", player_id, value);
         }
     }
 
     // Spawn secondary reserve ammo
     if(GetSpawnValueForPlayer(player_id, g_spawnSecondaryAmmoReserve, value)) {
         int weapon = GetPlayerWeaponSlot(player_id, CS_SLOT_SECONDARY);
-        if (IsValidEntity(weapon)) {
-            SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", value);
-            int ammotype = GetEntProp(weapon, Prop_Send, "m_iPrimaryAmmoType");
-            if(ammotype != -1) {
-                SetEntProp(player_id, Prop_Send, "m_iAmmo", value, _, ammotype);
-            }
-            LogAction(0, player_id, "%L weapon reserve ammo set to %d", player_id, value);
+        if (SetWeaponAmmo(player_id, weapon, AMMO_RESERVE, value)) {
+            LogAction(0, player_id, "%L secondary reserve ammo set to %d", player_id, value);
         }
     }
 
@@ -516,5 +578,23 @@ bool GetSpawnValueForPlayer(
         }
     }
 
+    return false;
+}
+
+bool SetWeaponAmmo(int player_id, int weapon, int ammo_type, int ammo) {
+    if (IsValidEntity(weapon)) {
+        if(ammo_type == AMMO_CLIP) {
+            SetEntProp(weapon, Prop_Send, "m_iClip1", ammo);
+            SetEntProp(weapon, Prop_Send, "m_iClip2", ammo);
+            return true;
+        } else if(ammo_type == AMMO_RESERVE) {
+            SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", ammo);
+            int type = GetEntProp(weapon, Prop_Send, "m_iPrimaryAmmoType");
+            if(type != -1) {
+                SetEntProp(player_id, Prop_Send, "m_iAmmo", ammo, _, type);
+            }
+            return true;
+        }
+    }
     return false;
 }
